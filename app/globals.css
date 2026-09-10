@@ -1,0 +1,37 @@
+:root {
+  color-scheme: light;
+  --fg: #222;
+  --muted: #777;
+  --line: #e5e5e5;
+  --bg: #fff;
+  --bg2: #f7f7f7;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  color: var(--fg);
+  background: var(--bg);
+  font: 15px/1.6 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+main { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+h1 { font-size: 22px; margin: 0; }
+h1 + p { margin: 4px 0 28px; color: var(--muted); }
+h2 { font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .04em; margin: 28px 0 8px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; background: var(--bg2); margin-bottom: 8px; }
+.card .row { justify-content: space-between; }
+.card label { font-weight: 600; }
+.card small, .hint { color: var(--muted); font-size: 12px; }
+.hint a { color: inherit; }
+input, textarea, button {
+  font: inherit; color: inherit; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); padding: 6px 10px;
+}
+input { flex: 1; min-width: 200px; }
+textarea { width: 100%; min-height: 360px; margin-top: 8px; resize: vertical; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; line-height: 1.5; }
+button { cursor: pointer; }
+button:hover { background: var(--bg2); }
+button.primary { background: var(--fg); color: #fff; border-color: var(--fg); }
+button.primary:hover { opacity: .85; }
+button:disabled { opacity: .5; cursor: default; }
+.ok { color: #2a7; }
+.err { color: #c33; font-size: 13px; margin: 6px 0 0; }
