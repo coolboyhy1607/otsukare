@@ -1,4 +1,4 @@
-// otsukare token filler — MV3 service worker.
+// otsukare Autofill — MV3 service worker.
 // Reads the Slack `d` (xoxd) and Notion `token_v2` HttpOnly cookies via chrome.cookies,
 // and captures the Slack `xoxc` token from a Slack API request via chrome.webRequest.
 // Only replies to the otsukare content script; nothing is stored or sent anywhere else.

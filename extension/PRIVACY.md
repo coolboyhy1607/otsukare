@@ -1,10 +1,10 @@
-# otsukare token filler — プライバシーポリシー / Privacy Policy
+# otsukare Autofill — プライバシーポリシー / Privacy Policy
 
 最終更新 / Last updated: 2026-09-11
 
 ## 日本語
 
-**単一の目的**：この拡張機能は、日報下書きツール otsukare（https://otsukare-six.vercel.app/）の入力欄に、あなたのブラウザにあるSlack / Notion のセッション情報を自動入力することだけを行います。
+**単一の目的**：この拡張機能（otsukare Autofill）は、日報下書きツール otsukare（https://otsukare-six.vercel.app/）の入力欄に、あなたのブラウザにあるSlack / Notion のセッション情報を自動入力することだけを行います。
 
 **読み取る情報（認証情報）**
 - Slack：Cookie `d`（xoxd）、および `app.slack.com` の Slack web クライアントが送る API リクエストに含まれるセッショントークン（xoxc）
