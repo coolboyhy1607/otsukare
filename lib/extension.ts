@@ -3,7 +3,10 @@
 
 export type ExtTokens = { slackToken?: string; slackCookie?: string; notionCookie?: string };
 
-// Chrome Web Store listing — set after publishing so the install button can link to it.
+// Chrome Web Store listing URL for the "otsukare token filler" extension (see extension/README.md).
+// TODO(publish): placeholder — until the extension is published, the "拡張機能をインストール" button
+// opens a 404. After publishing, replace REPLACE_WITH_STORE_ID with the real listing URL
+// (https://chromewebstore.google.com/detail/<STORE_ID>) so the button links correctly.
 export const WEBSTORE_URL = "https://chromewebstore.google.com/detail/REPLACE_WITH_STORE_ID";
 
 const TAG = "otsukare-ext";
