@@ -1,4 +1,4 @@
-# otsukare token filler（Chrome 拡張機能）
+# otsukare Autofill（Chrome 拡張機能）
 
 otsukare の「ブラウザから自動入力」ボタン用の拡張機能。ログイン中の Slack / Notion のセッションから
 トークンを読み取り、otsukare の入力欄に自動で埋めます。**読み取った値は otsukare のページに渡すだけで、

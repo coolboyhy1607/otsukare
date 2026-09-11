@@ -1,4 +1,4 @@
-// Talks to the "otsukare token filler" extension via window.postMessage (a content script relays
+// Talks to the "otsukare Autofill" extension via window.postMessage (a content script relays
 // to the extension). No extension ID needed: detection is a ping/pong handshake.
 
 // `error: "consent"` = installed but the user hasn't agreed on the extension's consent page yet
@@ -7,7 +7,7 @@ export type ExtTokens = { slackToken?: string; slackCookie?: string; notionCooki
 // no = not installed, consent = installed but not yet agreed, yes = ready to read.
 export type ExtStatus = "no" | "consent" | "yes";
 
-// Chrome Web Store listing URL for the "otsukare token filler" extension (see extension/README.md).
+// Chrome Web Store listing URL for the "otsukare Autofill" extension (see extension/README.md).
 // TODO(publish): placeholder — until the extension is published, the "拡張機能をインストール" button
 // opens a 404. After publishing, replace REPLACE_WITH_STORE_ID with the real listing URL
 // (https://chromewebstore.google.com/detail/<STORE_ID>) so the button links correctly.
