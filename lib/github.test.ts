@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { reduceEvents, renderGithub } from "./github.ts";
+import { pickSlackToken } from "./extension.ts";
 import { renderNotion } from "./notion.ts";
 import { renderOutlook } from "./outlook.ts";
 import { dayRange, render } from "./report.ts";
@@ -78,6 +79,14 @@ test("outlook: recipient domains deduped, all-day / declined / cancelled events 
   assert.deepEqual(mail.lines, ["- 見積 → @x.jp, @y.com", "- (件名なし) → "]);
   assert.equal(meetings.lines.length, 1);
   assert.match(meetings.lines[0], /^- \d\d:\d\d–\d\d:\d\d 朝会$/);
+});
+
+test("pickSlackToken: current workspace from path, else first team, else empty on garbage", () => {
+  const cfg = JSON.stringify({ teams: { T1: { token: "xoxc-1" }, T2: { token: "xoxc-2" } } });
+  assert.equal(pickSlackToken(cfg, "/client/T2/C123"), "xoxc-2");
+  assert.equal(pickSlackToken(cfg, "/client/UNKNOWN"), "xoxc-1"); // path team missing -> first
+  assert.equal(pickSlackToken(cfg, ""), "xoxc-1");
+  assert.equal(pickSlackToken("not json", "/client/T2"), "");
 });
 
 test("report: fixed section order, empty sources omitted, same-named sections merged", () => {
