@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { github } from "@/lib/github";
-import { connectGoogle, google, googleConnected } from "@/lib/google";
+import { connectGoogle, google, googleConnected, googleEnabled } from "@/lib/google";
+import { notion } from "@/lib/notion";
+import { connectOutlook, outlook, outlookConnected, outlookEnabled } from "@/lib/outlook";
 import { dayRange, render, today, type SourceResult } from "@/lib/report";
-import { loadSettings, saveSettings, type Settings } from "@/lib/settings";
+import { EMPTY, loadSettings, saveSettings, type Settings } from "@/lib/settings";
 import { slack } from "@/lib/slack";
-
-const EMPTY: Settings = { githubToken: "", slackToken: "", googleClientId: "" };
 
 export default function Page() {
   const [s, setS] = useState<Settings>(EMPTY);
@@ -16,12 +16,14 @@ export default function Page() {
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [gOk, setGOk] = useState(false);
+  const [oOk, setOOk] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setS(loadSettings());
     setDate(today());
     setGOk(googleConnected());
+    setOOk(outlookConnected());
   }, []);
 
   const update = (patch: Partial<Settings>) => {
@@ -30,13 +32,13 @@ export default function Page() {
     saveSettings(next);
   };
 
-  const connect = async () => {
+  const connect = (name: string, fn: () => Promise<void>, done: (ok: boolean) => void) => async () => {
     try {
-      await connectGoogle(s.googleClientId.trim());
-      setGOk(true);
-      setErrors((e) => ({ ...e, Google: "" }));
+      await fn();
+      done(true);
+      setErrors((e) => ({ ...e, [name]: "" }));
     } catch (e) {
-      setErrors((x) => ({ ...x, Google: String(e) }));
+      setErrors((x) => ({ ...x, [name]: String(e) }));
     }
   };
 
@@ -47,15 +49,19 @@ export default function Page() {
     const errs: Record<string, string> = {};
     const track = (name: string, p: Promise<SourceResult | SourceResult[]>) =>
       p.then((r) => results.push(...[r].flat()), (e) => (errs[name] = String(e)));
+    const slackOk = s.slackToken && s.slackCookie;
     const tasks = [
       s.githubToken && track("GitHub", github(s.githubToken.trim(), start, end)),
-      s.slackToken && track("Slack", slack(s.slackToken.trim(), date)),
+      slackOk && track("Slack", slack({ token: s.slackToken.trim(), cookie: s.slackCookie.trim() }, date)),
+      s.notionCookie && track("Notion", notion(s.notionCookie.trim(), start, end)),
       googleConnected() && track("Google", google(start, end)),
+      outlookConnected() && track("Outlook", outlook(start, end)),
     ].filter(Boolean);
     await Promise.all(tasks);
     setOut(render(date, results));
     setErrors(errs);
     setGOk(googleConnected());
+    setOOk(outlookConnected());
     setBusy(false);
   };
 
@@ -65,12 +71,12 @@ export default function Page() {
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const anySource = !!(s.githubToken || s.slackToken || gOk);
+  const anySource = !!(s.githubToken || (s.slackToken && s.slackCookie) || s.notionCookie || gOk || oOk);
 
   return (
     <main>
       <h1>otsukare</h1>
-      <p>GitHub・Slack・Gmail・カレンダーの今日の活動から、日報の下書きを2秒で。データはブラウザの外に出ません。</p>
+      <p>GitHub・Slack・Notion・メール・カレンダーの今日の活動から、日報の下書きを2秒で。トークンはこのブラウザにだけ保存されます。</p>
 
       <div className="row">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ flex: "none" }} />
@@ -105,37 +111,69 @@ export default function Page() {
       <div className="card">
         <div className="row">
           <label>Slack</label>
-          {s.slackToken && <small className="ok">設定済み</small>}
+          {s.slackToken && s.slackCookie && <small className="ok">設定済み</small>}
         </div>
         <div className="row">
-          <input type="password" placeholder="User OAuth Token（xoxp-…、search:read）" value={s.slackToken}
+          <input type="password" placeholder="xoxc-…（セッショントークン）" value={s.slackToken}
             onChange={(e) => update({ slackToken: e.target.value })} autoComplete="off" />
+          <input type="password" placeholder="xoxd-…（Cookie「d」の値）" value={s.slackCookie}
+            onChange={(e) => update({ slackCookie: e.target.value })} autoComplete="off" />
         </div>
         <small className="hint">
-          <a href="https://api.slack.com/apps?new_app=1" target="_blank" rel="noreferrer">Slack アプリを作成</a>
-          → OAuth &amp; Permissions → User Token Scopes に <code>search:read</code> → Install to Workspace → User OAuth Token をコピー
+          アプリ作成は不要。ブラウザで Slack を開き、DevTools の Console で
+          <code>JSON.parse(localStorage.localConfig_v2).teams[location.pathname.match(/^\/client\/([A-Z0-9]+)/)[1]].token</code>
+          → xoxc。Application → Cookies → <code>d</code> の値 → xoxd。手順は <a href="https://github.com/coolboyhy1607/otsukare#slack" target="_blank" rel="noreferrer">README</a>。
+        </small>
+      </div>
+
+      <div className="card">
+        <div className="row">
+          <label>Notion</label>
+          {s.notionCookie && <small className="ok">設定済み</small>}
+        </div>
+        <div className="row">
+          <input type="password" placeholder="Cookie「token_v2」の値" value={s.notionCookie}
+            onChange={(e) => update({ notionCookie: e.target.value })} autoComplete="off" />
+        </div>
+        <small className="hint">
+          インテグレーション作成は不要。notion.so を開き、DevTools → Application → Cookies → <code>token_v2</code> の値をコピー。
+          取得するのは、今日あなたが最後に編集したページのタイトルのみ。
         </small>
       </div>
 
       <div className="card">
         <div className="row">
           <label>Google（Gmail 送信済み・カレンダー）</label>
-          {gOk ? <small className="ok">接続中（約1時間有効）</small> : s.googleClientId && <small>未接続</small>}
+          {gOk && <small className="ok">接続中（約1時間有効）</small>}
         </div>
         <div className="row">
-          <input placeholder="OAuth クライアント ID（…apps.googleusercontent.com）" value={s.googleClientId}
-            onChange={(e) => update({ googleClientId: e.target.value })} autoComplete="off" />
-          <button onClick={connect} disabled={!s.googleClientId}>Google に接続</button>
+          <button onClick={connect("Google", connectGoogle, setGOk)} disabled={!googleEnabled}>Google に接続</button>
         </div>
         <small className="hint">
-          <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">Google Cloud</a>
-          で Gmail API と Calendar API を有効化 → OAuth クライアント ID（ウェブ アプリケーション）を作成し、承認済み JavaScript 生成元に
-          このサイトのオリジンを追加。手順は <a href="https://github.com/coolboyhy1607/otsukare#google" target="_blank" rel="noreferrer">README</a>。
+          {googleEnabled
+            ? "「Google に接続」→ アカウントを選んで許可するだけ。読み取り専用（gmail.readonly / calendar.readonly）。"
+            : "このデプロイでは未設定です（NEXT_PUBLIC_GOOGLE_CLIENT_ID）。"}
+        </small>
+      </div>
+
+      <div className="card">
+        <div className="row">
+          <label>Outlook（送信済みメール・カレンダー）</label>
+          {oOk && <small className="ok">接続中（約1時間有効）</small>}
+        </div>
+        <div className="row">
+          <button onClick={connect("Outlook", connectOutlook, setOOk)} disabled={!outlookEnabled}>Microsoft に接続</button>
+        </div>
+        <small className="hint">
+          {outlookEnabled
+            ? "「Microsoft に接続」→ サインインして許可するだけ。読み取り専用（Mail.Read / Calendars.Read）。会社テナントでは管理者の同意が必要な場合があります。"
+            : "このデプロイでは未設定です（NEXT_PUBLIC_MS_CLIENT_ID）。"}
         </small>
       </div>
 
       <p className="hint" style={{ marginTop: 28 }}>
-        トークンはこのブラウザの localStorage にだけ保存され、各サービスの API へ直接送られます。サーバーはありません。
+        トークンはこのブラウザの localStorage にだけ保存されます。GitHub・Google・Microsoft は各 API を直接呼び、
+        ブラウザから呼べない Slack・Notion だけ同一オリジンの中継 API（何も保存しません）を経由します。
       </p>
     </main>
   );

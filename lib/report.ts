@@ -11,10 +11,17 @@ export const dayRange = (date: string) => {
 export const hhmm = (d: Date) =>
   d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 
-const ORDER = ["GitHub", "Slack", "メール（送信）", "会議"];
+const ORDER = ["GitHub", "Notion", "Slack", "メール（送信）", "会議"];
 
 export function render(date: string, results: SourceResult[]): string {
-  const sorted = [...results].sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
+  // Gmail and Outlook both emit メール/会議 — same-named sections merge into one.
+  const merged = new Map<string, SourceResult>();
+  for (const r of results) {
+    const m = merged.get(r.name) ?? merged.set(r.name, { name: r.name, lines: [], tomorrow: [] }).get(r.name)!;
+    m.lines.push(...r.lines);
+    m.tomorrow!.push(...(r.tomorrow ?? []));
+  }
+  const sorted = [...merged.values()].sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
   const out = [`# 日報 ${date}`, "", "## やったこと"];
   for (const r of sorted) if (r.lines.length) out.push(`### ${r.name}`, ...r.lines);
   const tomorrow = sorted.flatMap((r) => r.tomorrow ?? []);

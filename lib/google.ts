@@ -1,16 +1,18 @@
-import { hhmm, type SourceResult } from "./report";
+import { hhmm, type SourceResult } from "./report.ts";
+import { tokenStore } from "./settings.ts";
 
 declare global {
   interface Window { google?: any }
 }
 
+/** One shared OAuth client (consent screen in Testing; add users as test users). Set at build time. */
+const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+export const googleEnabled = !!CLIENT_ID;
 const SCOPES =
   "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly";
-const KEY = "otsukare.google";
 
-type Token = { value: string; exp: number };
-const readToken = (): Token | null => JSON.parse(sessionStorage.getItem(KEY) ?? "null");
-export const googleConnected = () => (readToken()?.exp ?? 0) > Date.now();
+const store = tokenStore("otsukare.google");
+export const googleConnected = () => !!store.get();
 
 const loadGis = () =>
   new Promise<void>((ok, ng) => {
@@ -23,24 +25,23 @@ const loadGis = () =>
   });
 
 /** Implicit (token) flow: no backend, no refresh token; re-connect after ~1h. */
-export async function connectGoogle(clientId: string) {
+export async function connectGoogle() {
   await loadGis();
   const t = await new Promise<any>((ok, ng) => {
     window.google.accounts.oauth2
       .initTokenClient({
-        client_id: clientId,
+        client_id: CLIENT_ID,
         scope: SCOPES,
         callback: (r: any) => (r.error ? ng(new Error(r.error)) : ok(r)),
         error_callback: (e: any) => ng(new Error(e.type)),
       })
       .requestAccessToken();
   });
-  const token: Token = { value: t.access_token, exp: Date.now() + t.expires_in * 1000 };
-  sessionStorage.setItem(KEY, JSON.stringify(token));
+  store.set(t.access_token, Date.now() + t.expires_in * 1000);
 }
 
 const gapi = async (url: string) => {
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${readToken()?.value}` } });
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${store.get()}` } });
   if (!r.ok) throw new Error(`Google API ${r.status}`);
   return r.json();
 };

@@ -1,22 +1,20 @@
 import type { SourceResult } from "./report";
 
-// Token goes in the form body: Slack allows CORS only for "simple" requests
-// (no Authorization header, no preflight).
-const call = async (method: string, params: Record<string, string>) => {
-  const r = await fetch(`https://slack.com/api/${method}`, {
-    method: "POST",
-    body: new URLSearchParams(params),
-  });
+export type SlackAuth = { token: string; cookie: string }; // xoxc session token + `d` (xoxd) cookie
+
+// Via /api/slack: the xoxc token only works with the `d` cookie, which a browser can't send cross-origin.
+const call = async (auth: SlackAuth, method: string, params: Record<string, string>) => {
+  const r = await fetch("/api/slack", { method: "POST", body: JSON.stringify({ ...auth, method, params }) });
   const j = await r.json();
   if (!j.ok) throw new Error(`Slack ${method}: ${j.error}`);
   return j;
 };
 
-const search = async (token: string, query: string) => {
+const search = async (auth: SlackAuth, query: string) => {
   const matches: any[] = [];
   for (let page = 1; page <= 5; page++) {
-    const j = await call("search.messages", {
-      token, query, count: "100", page: String(page), sort: "timestamp", sort_dir: "asc",
+    const j = await call(auth, "search.messages", {
+      query, count: "100", page: String(page), sort: "timestamp", sort_dir: "asc",
     });
     matches.push(...j.messages.matches);
     if (page >= j.messages.paging.pages) break;
@@ -44,10 +42,10 @@ export function renderSlack(matches: any[]): SourceResult {
   return { name: "Slack", lines };
 }
 
-export async function slack(token: string, date: string): Promise<SourceResult> {
-  const me = await call("auth.test", { token });
+export async function slack(auth: SlackAuth, date: string): Promise<SourceResult> {
+  const me = await call(auth, "auth.test", {});
   // `on:` is evaluated in the searching user's Slack timezone.
-  let matches = await search(token, `from:<@${me.user_id}> on:${date}`);
-  if (!matches.length) matches = await search(token, `from:@${me.user} on:${date}`);
+  let matches = await search(auth, `from:<@${me.user_id}> on:${date}`);
+  if (!matches.length) matches = await search(auth, `from:@${me.user} on:${date}`);
   return renderSlack(matches);
 }
