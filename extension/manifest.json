@@ -8,7 +8,7 @@
   "background": { "service_worker": "background.js" },
   "content_scripts": [
     {
-      "matches": ["http://localhost/*", "https://otsukare.vercel.app/*"],
+      "matches": ["http://localhost/*", "https://otsukare-coolboyhy1607s-projects.vercel.app/*"],
       "js": ["content.js"],
       "run_at": "document_start"
     }

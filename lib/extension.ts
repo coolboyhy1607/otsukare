@@ -30,7 +30,7 @@ export function extInstalled(timeout = 600): Promise<boolean> {
 }
 
 /** Ask the extension for whatever tokens it can read from the browser session. */
-export function extGetTokens(timeout = 15000): Promise<ExtTokens> {
+export function extGetTokens(timeout = 20000): Promise<ExtTokens> {
   return new Promise((resolve, reject) => {
     const on = (e: MessageEvent) => {
       if (!fromExt(e, "tokens")) return;

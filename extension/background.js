@@ -4,8 +4,9 @@
 // Only replies to the otsukare content script; nothing is stored or sent anywhere else.
 
 // Where to send the user after they install (so they land back on otsukare and it auto-fills).
-// Change to your deployed origin.
-const WEB_URL = "https://otsukare.vercel.app/";
+// MUST match a host in manifest.json's content_scripts. Change to your real public otsukare origin.
+// NOTE: the short alias `otsukare.vercel.app` is owned by someone else — do NOT use it.
+const WEB_URL = "https://otsukare-coolboyhy1607s-projects.vercel.app/";
 
 const cookie = async (url, name) => (await chrome.cookies.get({ url, name }))?.value ?? "";
 
@@ -25,14 +26,24 @@ const readInTab = async (tabId) => {
   return res?.result ?? "";
 };
 
-const waitComplete = (tabId) =>
+// Resolve on the tab's "complete" event, but always settle (missed event / slow load) so the
+// caller can proceed and its `finally` still closes the tab — never hang.
+const waitComplete = (tabId, timeout = 6000) =>
   new Promise((resolve) => {
+    const cleanup = () => {
+      chrome.tabs.onUpdated.removeListener(done);
+      clearTimeout(timer);
+    };
     const done = (id, info) => {
       if (id === tabId && info.status === "complete") {
-        chrome.tabs.onUpdated.removeListener(done);
+        cleanup();
         resolve();
       }
     };
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, timeout);
     chrome.tabs.onUpdated.addListener(done);
   });
 
