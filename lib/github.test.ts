@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { reduceEvents, renderGithub } from "./github.ts";
-import { render } from "./report.ts";
+import { renderNotion } from "./notion.ts";
+import { renderOutlook } from "./outlook.ts";
+import { dayRange, render } from "./report.ts";
 import { renderSlack } from "./slack.ts";
 
 const ev = (type: string, repo: string, payload: any) => ({ type, repo: { name: repo }, created_at: "", payload });
@@ -46,18 +48,51 @@ test("slack: channels get snippets, DMs count only, DMs last", () => {
   assert.deepEqual(lines, [`- #dev: 2件 「hello world」 「${"x".repeat(40)}」`, "- DM: 1件"]);
 });
 
-test("report: fixed section order, empty sources omitted", () => {
+test("notion: only pages last edited by me within the day, title segments joined", () => {
+  const { start, end } = dayRange("2026-09-10");
+  const t = start.getTime();
+  const { lines } = renderNotion(
+    [
+      { last_edited_by_id: "me", last_edited_time: t + 1000, properties: { title: [["設計", ["b"]], ["メモ"]] } },
+      { last_edited_by_id: "me", last_edited_time: t + 1000, properties: {} },
+      { last_edited_by_id: "you", last_edited_time: t + 1000, properties: { title: [["theirs"]] } },
+      { last_edited_by_id: "me", last_edited_time: end.getTime(), properties: { title: [["tomorrow"]] } },
+      { last_edited_by_id: "me", last_edited_time: t - 1, properties: { title: [["yesterday"]] } },
+    ],
+    "me", start, end,
+  );
+  assert.deepEqual(lines, ["- 設計メモ", "- (タイトルなし)"]);
+});
+
+test("outlook: recipient domains deduped, all-day / declined / cancelled events dropped", () => {
+  const [mail, meetings] = renderOutlook(
+    [{ subject: "見積", toRecipients: [{ emailAddress: { address: "a@x.jp" } }, { emailAddress: { address: "b@x.jp" } }, { emailAddress: { address: "c@y.com" } }] },
+     { subject: "" }],
+    [
+      { subject: "朝会", isAllDay: false, start: { dateTime: "2026-09-10T01:00:00.0000000" }, end: { dateTime: "2026-09-10T01:30:00.0000000" } },
+      { subject: "休暇", isAllDay: true, start: { dateTime: "2026-09-10T00:00:00.0000000" }, end: { dateTime: "2026-09-11T00:00:00.0000000" } },
+      { subject: "辞退", isAllDay: false, responseStatus: { response: "declined" }, start: { dateTime: "2026-09-10T02:00:00.0000000" }, end: { dateTime: "2026-09-10T03:00:00.0000000" } },
+      { subject: "中止", isAllDay: false, isCancelled: true, start: { dateTime: "2026-09-10T04:00:00.0000000" }, end: { dateTime: "2026-09-10T05:00:00.0000000" } },
+    ],
+  );
+  assert.deepEqual(mail.lines, ["- 見積 → @x.jp, @y.com", "- (件名なし) → "]);
+  assert.equal(meetings.lines.length, 1);
+  assert.match(meetings.lines[0], /^- \d\d:\d\d–\d\d:\d\d 朝会$/);
+});
+
+test("report: fixed section order, empty sources omitted, same-named sections merged", () => {
   const md = render("2026-09-10", [
     { name: "会議", lines: ["- 10:00–10:30 朝会"] },
     { name: "Slack", lines: [] },
     { name: "GitHub", lines: ["- o/r", "  - PR #1 — 作成"], tomorrow: ["- [o/r] PR #1（レビュー待ち）"] },
+    { name: "会議", lines: ["- 14:00–15:00 設計レビュー"] },
   ]);
   assert.equal(
     md,
     [
       "# 日報 2026-09-10", "", "## やったこと",
       "### GitHub", "- o/r", "  - PR #1 — 作成",
-      "### 会議", "- 10:00–10:30 朝会",
+      "### 会議", "- 10:00–10:30 朝会", "- 14:00–15:00 設計レビュー",
       "", "## 明日やること", "- [o/r] PR #1（レビュー待ち）", "- ", "", "## 困っていること", "- ",
     ].join("\n"),
   );
