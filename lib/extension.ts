@@ -53,14 +53,3 @@ export function extGetTokens(timeout = 20000): Promise<ExtTokens> {
     post("getTokens");
   });
 }
-
-/** Pure: pick the session token for the current workspace, else the first. Mirrors the extension. */
-export function pickSlackToken(localConfigV2: string, pathname = ""): string {
-  try {
-    const teams = JSON.parse(localConfigV2).teams as Record<string, { token?: string }>;
-    const id = pathname.match(/^\/client\/([A-Z0-9]+)/)?.[1];
-    return (id && teams[id]?.token) || Object.values(teams)[0]?.token || "";
-  } catch {
-    return "";
-  }
-}

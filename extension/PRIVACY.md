@@ -7,7 +7,7 @@
 **単一の目的**：この拡張機能は、日報下書きツール otsukare（https://otsukare-six.vercel.app/）の入力欄に、あなたのブラウザにあるSlack / Notion のセッション情報を自動入力することだけを行います。
 
 **読み取る情報（認証情報）**
-- Slack：Cookie `d`（xoxd）、および `app.slack.com` のローカルストレージにあるセッショントークン（xoxc）
+- Slack：Cookie `d`（xoxd）、および `app.slack.com` の Slack web クライアントが送る API リクエストに含まれるセッショントークン（xoxc）
 - Notion：Cookie `token_v2`
 
 **読み取るタイミング**：拡張機能内の同意画面で「同意する」を押した後、かつ otsukare のページで自動入力を求めたときだけです。同意前は何も読み取りません。同意はツールバーの拡張機能アイコン（または拡張機能のオプション）からいつでも取り消せ、取り消すと読み取りは停止します。
@@ -27,7 +27,7 @@
 **Single purpose**: this extension does one thing — it fills the Slack / Notion session credentials already present in your browser into the input fields of otsukare (https://otsukare-six.vercel.app/), a daily-report drafting tool.
 
 **Data read (authentication information)**
-- Slack: the `d` cookie (xoxd) and the session token (xoxc) stored in `app.slack.com`'s localStorage
+- Slack: the `d` cookie (xoxd), and the session token (xoxc) carried in the API requests that the Slack web client at `app.slack.com` sends
 - Notion: the `token_v2` cookie
 
 **When**: only after you click "Agree" on the extension's consent page, and only when the otsukare page asks for auto-fill. Nothing is read before consent. You can withdraw consent at any time from the extension's toolbar icon (or its options page); reading stops immediately.

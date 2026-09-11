@@ -1,9 +1,13 @@
 // otsukare token filler — MV3 service worker.
 // Reads the Slack `d` (xoxd) and Notion `token_v2` HttpOnly cookies via chrome.cookies,
-// and the Slack `xoxc` token from app.slack.com's localStorage via chrome.scripting.
+// and captures the Slack `xoxc` token from a Slack API request via chrome.webRequest.
 // Only replies to the otsukare content script; nothing is stored or sent anywhere else.
 // Nothing is read until the user has agreed on consent.html (Chrome Web Store: prominent
 // disclosure + affirmative consent before handling authentication data).
+//
+// Why webRequest and not localStorage: since Slack's 2026-01 change, `localConfig_v2` holds
+// `"teams":{}` and the xoxc token is no longer stored on disk. The only place it still appears
+// is the `token` field of the web client's own API calls, so we capture it there.
 
 // Where to send the user after they agree (so they land back on otsukare and it auto-fills).
 // MUST match a host in manifest.json's content_scripts. Change to your real public otsukare origin.
@@ -20,63 +24,41 @@ const askConsent = async () => {
 };
 
 const cookie = async (url, name) => (await chrome.cookies.get({ url, name }))?.value ?? "";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Runs inside an app.slack.com tab: the current workspace's session token, else the first one.
-function readXoxc() {
+// Latest xoxc seen on a Slack API request. Registered at top level so it re-attaches on every
+// service-worker wake and is live while a Slack tab boots. Never sent anywhere but the page.
+let captured = "";
+const pickXoxc = (details) => {
   try {
-    const teams = JSON.parse(localStorage.localConfig_v2).teams;
-    const id = location.pathname.match(/^\/client\/([A-Z0-9]+)/)?.[1];
-    return (id && teams[id]?.token) || Object.values(teams)[0]?.token || "";
-  } catch {
-    return "";
-  }
-}
-
-const readInTab = async (tabId) => {
-  const [res] = await chrome.scripting.executeScript({ target: { tabId }, func: readXoxc });
-  return res?.result ?? "";
+    const q = new URL(details.url).searchParams.get("token");
+    if (q?.startsWith("xoxc-")) return q;
+  } catch {}
+  const fd = details.requestBody?.formData?.token?.[0];
+  if (typeof fd === "string" && fd.startsWith("xoxc-")) return fd;
+  const raw = details.requestBody?.raw?.[0]?.bytes;
+  if (raw) return new TextDecoder().decode(raw).match(/xoxc-[0-9A-Za-z-]+/)?.[0] ?? "";
+  return "";
 };
+chrome.webRequest.onBeforeRequest.addListener(
+  (details) => {
+    const t = pickXoxc(details);
+    if (t) captured = t;
+  },
+  { urls: ["*://*.slack.com/*"] },
+  ["requestBody"],
+);
 
-// Resolve on the tab's "complete" event, but always settle (missed event / slow load) so the
-// caller can proceed and its `finally` still closes the tab — never hang.
-const waitComplete = (tabId, timeout = 6000) =>
-  new Promise((resolve) => {
-    const cleanup = () => {
-      chrome.tabs.onUpdated.removeListener(done);
-      clearTimeout(timer);
-    };
-    const done = (id, info) => {
-      if (id === tabId && info.status === "complete") {
-        cleanup();
-        resolve();
-      }
-    };
-    const timer = setTimeout(() => {
-      cleanup();
-      resolve();
-    }, timeout);
-    chrome.tabs.onUpdated.addListener(done);
-  });
-
+// xoxc rotates (sometimes hourly), so capture a fresh one each time rather than cache a stale one:
+// open a background app.slack.com tab, let its boot call fire (carrying the token), read, close.
 async function getXoxc() {
-  const tabs = await chrome.tabs.query({});
-  const open = tabs.find((t) => t.url?.includes("app.slack.com"));
-  if (open) {
-    const token = await readInTab(open.id);
-    if (token) return token;
-  }
-  // No usable Slack tab: open one in the background, read localStorage, close it.
+  captured = "";
   const tab = await chrome.tabs.create({ url: "https://app.slack.com/", active: false });
   try {
-    await waitComplete(tab.id);
-    for (let i = 0; i < 5; i++) {
-      const token = await readInTab(tab.id);
-      if (token) return token;
-      await new Promise((r) => setTimeout(r, 700)); // SPA writes localConfig_v2 after boot
-    }
-    return "";
+    for (let i = 0; i < 24 && !captured; i++) await sleep(500); // ~12s for client.boot to fire
+    return captured;
   } finally {
-    chrome.tabs.remove(tab.id);
+    chrome.tabs.remove(tab.id).catch(() => {});
   }
 }
 
