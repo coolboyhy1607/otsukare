@@ -5,7 +5,7 @@ export type SlackAuth = { token: string; cookie: string }; // xoxc session token
 // Via /api/slack: the xoxc token only works with the `d` cookie, which a browser can't send cross-origin.
 const call = async (auth: SlackAuth, method: string, params: Record<string, string>) => {
   const r = await fetch("/api/slack", { method: "POST", body: JSON.stringify({ ...auth, method, params }) });
-  const j = await r.json();
+  const j = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
   if (!j.ok) throw new Error(`Slack ${method}: ${j.error}`);
   return j;
 };

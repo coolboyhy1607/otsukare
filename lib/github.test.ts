@@ -64,14 +64,15 @@ test("notion: only pages last edited by me within the day, title segments joined
   assert.deepEqual(lines, ["- 設計メモ", "- (タイトルなし)"]);
 });
 
-test("outlook: recipient domains deduped, all-day and declined events dropped", () => {
+test("outlook: recipient domains deduped, all-day / declined / cancelled events dropped", () => {
   const [mail, meetings] = renderOutlook(
     [{ subject: "見積", toRecipients: [{ emailAddress: { address: "a@x.jp" } }, { emailAddress: { address: "b@x.jp" } }, { emailAddress: { address: "c@y.com" } }] },
-     { subject: "", toRecipients: [] }],
+     { subject: "" }],
     [
       { subject: "朝会", isAllDay: false, start: { dateTime: "2026-09-10T01:00:00.0000000" }, end: { dateTime: "2026-09-10T01:30:00.0000000" } },
       { subject: "休暇", isAllDay: true, start: { dateTime: "2026-09-10T00:00:00.0000000" }, end: { dateTime: "2026-09-11T00:00:00.0000000" } },
       { subject: "辞退", isAllDay: false, responseStatus: { response: "declined" }, start: { dateTime: "2026-09-10T02:00:00.0000000" }, end: { dateTime: "2026-09-10T03:00:00.0000000" } },
+      { subject: "中止", isAllDay: false, isCancelled: true, start: { dateTime: "2026-09-10T04:00:00.0000000" }, end: { dateTime: "2026-09-10T05:00:00.0000000" } },
     ],
   );
   assert.deepEqual(mail.lines, ["- 見積 → @x.jp, @y.com", "- (件名なし) → "]);

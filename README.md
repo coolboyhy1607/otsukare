@@ -107,7 +107,8 @@ npm run build
 
 ## 制約・今後
 
-- Google の OAuth クライアントは **Testing** 公開ステータス：テストユーザー最大 100 人、リフレッシュ不可。100 人を超えて公開するには `gmail.readonly`（restricted scope）の CASA 審査が必要
+- Google の OAuth クライアントは **Testing** 公開ステータス：**Test users** に追加した人（最大 100 人）だけ接続できます。100 人を超えて公開するには `gmail.readonly`（restricted scope）の CASA 審査が必要
+- 中継 API が受け付ける Slack メソッドは `auth.test` / `search.messages`、Notion は `loadUserContent` / `search` のみ（許可リスト）
 - Notion は「今日あなたが**最後に**編集したページ」のみ。あなたの後に他人が編集したページは載りません
 - 中継 API は誰でも叩けます（自分のトークンを持ち込むだけなので情報漏えいはありませんが、Vercel の帯域を使われる可能性はあります）
 - 保留：LLM 要約、日報の保存

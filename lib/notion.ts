@@ -24,7 +24,8 @@ export function renderNotion(blocks: any[], me: string, start: Date, end: Date):
 
 export async function notion(cookie: string, start: Date, end: Date): Promise<SourceResult> {
   const { recordMap } = await call(cookie, "loadUserContent", {});
-  const me = Object.keys(recordMap.notion_user)[0];
+  const me = Object.keys(recordMap?.notion_user ?? {})[0];
+  if (!me) throw new Error("Notion: ユーザー情報を取得できません（token_v2 を確認）");
   const blocks = await Promise.all(
     Object.keys(recordMap.space ?? {}).map(async (spaceId) => {
       const j = await call(cookie, "search", {

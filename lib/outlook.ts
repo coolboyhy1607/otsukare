@@ -22,8 +22,9 @@ export async function connectOutlook() {
 
 const graph = async (path: string) => {
   const r = await fetch(`https://graph.microsoft.com/v1.0/me${path}`, { headers: { Authorization: `Bearer ${store.get()}` } });
-  if (!r.ok) throw new Error(`Graph API ${r.status}`);
-  return r.json();
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(`Graph API ${r.status}: ${j?.error?.message ?? ""}`);
+  return j;
 };
 
 // Graph returns 7 fractional digits ("…T01:00:00.0000000") in UTC; trim to what Date parses everywhere.
@@ -32,11 +33,11 @@ const utc = (t: { dateTime: string }) => new Date(`${t.dateTime.slice(0, 19)}Z`)
 /** Pure: sent messages + calendarView events -> same lines as Gmail / Google Calendar. */
 export function renderOutlook(messages: any[], events: any[]): SourceResult[] {
   const mail = messages.map((m) => {
-    const domains = [...new Set<string>(m.toRecipients.map((r: any) => r.emailAddress.address.replace(/^[^@]*/, "")))].join(", ");
+    const domains = [...new Set<string>((m.toRecipients ?? []).map((r: any) => r.emailAddress.address.replace(/^[^@]*/, "")))].join(", ");
     return `- ${m.subject || "(件名なし)"} → ${domains}`;
   });
   const meetings = events
-    .filter((e) => !e.isAllDay && e.responseStatus?.response !== "declined")
+    .filter((e) => !e.isAllDay && !e.isCancelled && e.responseStatus?.response !== "declined")
     .map((e) => `- ${hhmm(utc(e.start))}–${hhmm(utc(e.end))} ${e.subject || "(タイトルなし)"}`);
   return [{ name: "メール（送信）", lines: mail }, { name: "会議", lines: meetings }];
 }
@@ -45,7 +46,7 @@ export async function outlook(start: Date, end: Date): Promise<SourceResult[]> {
   const filter = encodeURIComponent(`sentDateTime ge ${start.toISOString()} and sentDateTime lt ${end.toISOString()}`);
   const [sent, cal] = await Promise.all([
     graph(`/mailFolders/sentitems/messages?$filter=${filter}&$select=subject,toRecipients&$top=100`),
-    graph(`/calendarView?startDateTime=${start.toISOString()}&endDateTime=${end.toISOString()}&$select=subject,start,end,isAllDay,responseStatus&$orderby=start/dateTime&$top=50`),
+    graph(`/calendarView?startDateTime=${start.toISOString()}&endDateTime=${end.toISOString()}&$select=subject,start,end,isAllDay,isCancelled,responseStatus&$orderby=start/dateTime&$top=50`),
   ]);
   return renderOutlook(sent.value ?? [], cal.value ?? []);
 }
