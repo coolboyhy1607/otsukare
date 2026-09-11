@@ -1,7 +1,11 @@
 // Talks to the "otsukare token filler" extension via window.postMessage (a content script relays
 // to the extension). No extension ID needed: detection is a ping/pong handshake.
 
-export type ExtTokens = { slackToken?: string; slackCookie?: string; notionCookie?: string };
+// `error: "consent"` = installed but the user hasn't agreed on the extension's consent page yet
+// (the extension opens that page itself; nothing is read until they agree).
+export type ExtTokens = { slackToken?: string; slackCookie?: string; notionCookie?: string; error?: "consent" };
+// no = not installed, consent = installed but not yet agreed, yes = ready to read.
+export type ExtStatus = "no" | "consent" | "yes";
 
 // Chrome Web Store listing URL for the "otsukare token filler" extension (see extension/README.md).
 // TODO(publish): placeholder — until the extension is published, the "拡張機能をインストール" button
@@ -14,20 +18,20 @@ const post = (type: string) => window.postMessage({ __src: "otsukare-page", type
 const fromExt = (e: MessageEvent, type: string) =>
   e.source === window && e.data?.__src === TAG && e.data.type === type;
 
-/** True if the extension's content script answers within `timeout` ms. */
-export function extInstalled(timeout = 600): Promise<boolean> {
-  if (typeof window === "undefined") return Promise.resolve(false);
+/** "no" unless the extension's content script answers within `timeout` ms; pong carries consent. */
+export function extStatus(timeout = 600): Promise<ExtStatus> {
+  if (typeof window === "undefined") return Promise.resolve("no");
   return new Promise((resolve) => {
     const on = (e: MessageEvent) => {
-      if (fromExt(e, "pong") || fromExt(e, "ready")) finish(true);
+      if (fromExt(e, "pong")) finish(e.data.consent === true ? "yes" : "consent");
     };
-    const finish = (v: boolean) => {
+    const finish = (v: ExtStatus) => {
       window.removeEventListener("message", on);
       clearTimeout(timer);
       resolve(v);
     };
     window.addEventListener("message", on);
-    const timer = setTimeout(() => finish(false), timeout);
+    const timer = setTimeout(() => finish("no"), timeout);
     post("ping");
   });
 }

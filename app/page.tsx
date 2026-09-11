@@ -7,8 +7,11 @@ import { notion } from "@/lib/notion";
 import { connectOutlook, outlook, outlookConnected, outlookEnabled } from "@/lib/outlook";
 import { dayRange, render, today, type SourceResult } from "@/lib/report";
 import { EMPTY, loadSettings, saveSettings, type Settings } from "@/lib/settings";
-import { extGetTokens, extInstalled, type ExtTokens, WEBSTORE_URL } from "@/lib/extension";
+import { extGetTokens, extStatus, type ExtStatus, type ExtTokens, WEBSTORE_URL } from "@/lib/extension";
 import { slack } from "@/lib/slack";
+
+// Solid button colour for the extension status (amber = install, blue = consent, green = ready).
+const tint = (c: string) => ({ background: c, color: "#fff", borderColor: c });
 
 export default function Page() {
   const [s, setS] = useState<Settings>(EMPTY);
@@ -19,7 +22,7 @@ export default function Page() {
   const [gOk, setGOk] = useState(false);
   const [oOk, setOOk] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [ext, setExt] = useState<"checking" | "yes" | "no">("checking");
+  const [ext, setExt] = useState<"checking" | ExtStatus>("checking");
   const [extBusy, setExtBusy] = useState(false);
   const [extNote, setExtNote] = useState("");
 
@@ -46,6 +49,13 @@ export default function Page() {
     setExtNote("");
     try {
       const t = await extGetTokens();
+      if (t.error === "consent") {
+        // The extension has opened its consent page; the user comes back here after agreeing.
+        setExt("consent");
+        setExtNote("拡張機能の同意画面を開きました。「同意する」を押すと otsukare に戻り、自動入力できます。");
+        return;
+      }
+      setExt("yes");
       const got = [t.slackToken && "xoxc", t.slackCookie && "xoxd", t.notionCookie && "token_v2"].filter(Boolean);
       applyTokens(t);
       setExtNote(got.length ? `自動入力しました：${got.join(" / ")}` : "読み取れるトークンがありません（Slack / Notion にログイン中のタブがあるか確認）");
@@ -62,10 +72,10 @@ export default function Page() {
     setDate(today());
     setGOk(googleConnected());
     setOOk(outlookConnected());
-    extInstalled().then((ok) => {
-      setExt(ok ? "yes" : "no");
+    extStatus().then((st) => {
+      setExt(st);
       const complete = loaded.slackToken && loaded.slackCookie && loaded.notionCookie;
-      if (ok && !complete) autofill();
+      if (st === "yes" && !complete) autofill(); // only after the user agreed on the consent page
     });
   }, []);
 
@@ -133,27 +143,29 @@ export default function Page() {
       <div className="card">
         <div className="row">
           <label>Slack・Notion を自動入力</label>
-          {ext === "yes" && <small className="ok">拡張機能あり</small>}
+          {ext === "yes" && <small className="ok">拡張機能あり・同意済み</small>}
+          {ext === "consent" && <small className="hint">拡張機能あり・未同意</small>}
           {ext === "no" && <small className="hint">拡張機能なし</small>}
         </div>
         <div className="row">
           {ext === "no" ? (
-            <button style={{ background: "#d90", color: "#fff", borderColor: "#d90" }}
-              onClick={() => window.open(WEBSTORE_URL, "_blank", "noreferrer")}>
+            <button style={tint("#d90")} onClick={() => window.open(WEBSTORE_URL, "_blank", "noreferrer")}>
               拡張機能をインストール
             </button>
           ) : (
-            <button style={ext === "yes" ? { background: "#2a7", color: "#fff", borderColor: "#2a7" } : undefined}
+            <button style={ext === "yes" ? tint("#2a7") : ext === "consent" ? tint("#27b") : undefined}
               onClick={autofill} disabled={ext === "checking" || extBusy}>
-              {ext === "checking" ? "確認中…" : extBusy ? "取得中…" : "ブラウザから自動入力"}
+              {ext === "checking" ? "確認中…" : extBusy ? "取得中…" : ext === "consent" ? "同意して自動入力" : "ブラウザから自動入力"}
             </button>
           )}
         </div>
         <small className={extNote.startsWith("自動入力") ? "ok" : "hint"}>
           {extNote ||
             (ext === "no"
-              ? "拡張機能を入れると、Slack の xoxc/xoxd と Notion の token_v2 をログイン中のブラウザから自動で読み取って入力します。インストール後は自動でこの画面に戻ります。"
-              : "ログイン中の Slack / Notion のセッションから読み取ります。トークンはこのブラウザの外に出ません。")}
+              ? "拡張機能を入れると、Slack の xoxc/xoxd と Notion の token_v2 をログイン中のブラウザから自動で読み取って入力します。インストール後は同意画面を経てこの画面に戻ります。"
+              : ext === "consent"
+                ? "拡張機能はまだ何も読み取っていません。ボタンを押すと同意画面が開き、「同意する」で自動入力が有効になります。"
+                : "ログイン中の Slack / Notion のセッションから読み取ります。トークンはこのブラウザの外に出ません。同意は拡張機能のアイコンからいつでも取り消せます。")}
         </small>
       </div>
 

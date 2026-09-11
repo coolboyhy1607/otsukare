@@ -4,12 +4,12 @@ const TAG = "otsukare-ext";
 
 const send = (msg) => window.postMessage({ __src: TAG, ...msg }, window.location.origin);
 
-// Announce presence on load so the page knows the extension is here even before it pings.
-send({ type: "ready" });
-
 window.addEventListener("message", (e) => {
   if (e.source !== window || e.data?.__src !== "otsukare-page") return;
-  if (e.data.type === "ping") send({ type: "pong" });
+  // pong carries the consent state so the page can show "未同意" and skip auto-fill until agreed.
+  if (e.data.type === "ping") {
+    chrome.storage.local.get("consent").then(({ consent }) => send({ type: "pong", consent: consent === true }));
+  }
   if (e.data.type === "getTokens") {
     chrome.runtime.sendMessage({ type: "getTokens" }, (tokens) => send({ type: "tokens", tokens: tokens || {} }));
   }
