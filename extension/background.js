@@ -6,7 +6,7 @@
 // Where to send the user after they install (so they land back on otsukare and it auto-fills).
 // MUST match a host in manifest.json's content_scripts. Change to your real public otsukare origin.
 // NOTE: the short alias `otsukare.vercel.app` is owned by someone else — do NOT use it.
-const WEB_URL = "https://otsukare-coolboyhy1607s-projects.vercel.app/";
+const WEB_URL = "https://otsukare-six.vercel.app/";
 
 const cookie = async (url, name) => (await chrome.cookies.get({ url, name }))?.value ?? "";
 

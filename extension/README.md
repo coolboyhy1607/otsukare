@@ -18,9 +18,9 @@ HttpOnly Cookie はページの JavaScript からは読めないため、この�
 3. **パッケージ化されていない拡張機能を読み込む** → この `extension/` フォルダを選択
 4. otsukare を開くと「Slack・Notion を自動入力」が緑（拡張機能あり）になる
 
-`http://localhost/*` と `https://otsukare-coolboyhy1607s-projects.vercel.app/*`（Vercel の本番エイリアス）で動きます。
+`http://localhost/*` と `https://otsukare-six.vercel.app/*`（本番）で動きます。
 
-**重要**：短いエイリアス `otsukare.vercel.app` は**別人が所有**しているため使いません（content script をそこに注入するとトークンを盗まれる恐れがあるため）。独自ドメインや別の公開オリジンにする場合は、`manifest.json` の `content_scripts.matches` と `background.js` の `WEB_URL` を**その実オリジンに揃えて**変更してください（両者は必ず一致させる）。Vercel の本番エイリアスは現在 Deployment Protection（ログイン必須）が有効なので、一般利用者に使わせるにはオフにする必要があります。
+**重要**：短いエイリアス `otsukare.vercel.app` は**別人が所有**しているため使いません（content script をそこに注入するとトークンを盗まれる恐れがあるため）。独自ドメインや別の公開オリジンに変える場合は、`manifest.json` の `content_scripts.matches` と `background.js` の `WEB_URL` を**その実オリジンに揃えて**変更してください（両者は必ず一致させる）。
 
 ## Chrome Web Store への公開（ワンクリック導入にする場合）
 
