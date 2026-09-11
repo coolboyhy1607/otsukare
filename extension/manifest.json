@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "otsukare token filler",
+  "version": "0.1.0",
+  "description": "Slack / Notion のブラウザセッションから otsukare の日報用トークン（xoxc / xoxd / token_v2）を読み取り、otsukare に自動入力します。",
+  "permissions": ["cookies", "scripting"],
+  "host_permissions": ["*://*.slack.com/*", "*://*.notion.so/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["http://localhost/*", "https://otsukare.vercel.app/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
