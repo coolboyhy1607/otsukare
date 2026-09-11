@@ -48,10 +48,8 @@ SAML SSO を使う組織のリポジトリを含めるには、トークン一�
 Slack アプリの作成は不要です。ブラウザでログイン中のセッションを使います（[slack-mcp-server の手順](https://github.com/korotovsky/slack-mcp-server/blob/master/docs/01-authentication-setup.md)と同じ）。
 
 1. ブラウザで Slack（`app.slack.com/client/…`）を開く
-2. DevTools の **Console** で次を実行し、表示された `xoxc-…` を **セッショントークン** に貼る
-   ```js
-   JSON.parse(localStorage.localConfig_v2).teams[location.pathname.match(/^\/client\/([A-Z0-9]+)/)[1]].token
-   ```
+2. DevTools の **Network** タブを開き、`api/` を含むリクエスト（例：`client.boot` / `client.counts`）を選ぶ。**Payload（フォームデータ）の `token`** に出る `xoxc-…` を **セッショントークン** に貼る
+   （Slack の 2026-01 の変更で `localStorage.localConfig_v2` からは取得できなくなったため。xoxc はセッションのため定期的に失効する ⇒ 失効したら同じ手順で取り直す）
 3. DevTools の **Application → Cookies → `d`** の値（`xoxd-…`）を **Cookie「d」** に貼る
 
 取得するもの：今日あなたが送った投稿を、チャンネル別に件数＋冒頭 40 字 × 最大 3 件。DM は件数のみ。

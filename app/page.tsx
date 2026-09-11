@@ -196,9 +196,9 @@ export default function Page() {
             onChange={(e) => update({ slackCookie: e.target.value })} autoComplete="off" />
         </div>
         <small className="hint">
-          上の「自動入力」が使えない場合の手動手順：アプリ作成は不要。ブラウザで Slack を開き、DevTools の Console で
-          <code>JSON.parse(localStorage.localConfig_v2).teams[location.pathname.match(/^\/client\/([A-Z0-9]+)/)[1]].token</code>
-          → xoxc。Application → Cookies → <code>d</code> の値 → xoxd。手順は <a href="https://github.com/coolboyhy1607/otsukare#slack" target="_blank" rel="noreferrer">README</a>。
+          上の「自動入力」が使えない場合の手動手順：アプリ作成は不要。ブラウザで Slack を開き、DevTools の <b>Network</b> タブで
+          <code>api/</code> を含むリクエストを選び、Payload/フォームデータの <code>token</code>（<code>xoxc-…</code>）をコピー → セッショントークン。
+          Application → Cookies → <code>d</code> の値（<code>xoxd-…</code>）→ Cookie「d」。手順は <a href="https://github.com/coolboyhy1607/otsukare#slack" target="_blank" rel="noreferrer">README</a>。
         </small>
       </div>
 

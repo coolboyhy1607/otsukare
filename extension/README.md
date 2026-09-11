@@ -5,11 +5,16 @@ otsukare の「ブラウザから自動入力」ボタン用の拡張機能。�
 どこにも送信・保存しません。** 読み取りは**同意画面で「同意する」を押した後にのみ**行われます。
 
 読み取るもの：
-- Slack `xoxc-…`（`app.slack.com` の `localStorage.localConfig_v2`）
+- Slack `xoxc-…`（`app.slack.com` を一時的に開き、その API リクエストの `token` を `chrome.webRequest` で取得）
 - Slack `xoxd-…`（`slack.com` の HttpOnly Cookie `d`）
 - Notion `token_v2`（`notion.so` の HttpOnly Cookie）
 
 HttpOnly Cookie はページの JavaScript からは読めないため、この拡張機能（`cookies` 権限）が必要です。
+xoxc は Slack の 2026-01 の変更で `localStorage`（`localConfig_v2`）に保存されなくなったため、
+`localStorage` からは取れません。唯一残っている出所である「Slack web クライアント自身の API リクエストの
+`token` フィールド」を `webRequest` で拾います（`app.slack.com` を一時タブで開くと起動時の `client.boot`
+などが飛ぶので、そこから取得して即座にタブを閉じます）。xoxc はセッションのため定期的に失効するので、
+毎回その場で取り直します（古い値をキャッシュしない）。
 
 ## 同意の流れ
 
@@ -48,7 +53,7 @@ otsukare の読み込み時の自動入力も、同意済みのときだけ動�
 3. ストア掲載情報：
    - 単一の目的：「ログイン中の Slack / Notion のセッション情報を otsukare の入力欄に自動入力する」
    - プライバシーポリシー URL：`https://github.com/coolboyhy1607/otsukare/blob/main/extension/PRIVACY.md`
-   - 権限の理由：`cookies` + host（Cookie `d` / `token_v2` の読み取り）、`scripting`（`app.slack.com` の localStorage から xoxc）、`storage`（同意フラグのみ）
+   - 権限の理由：`cookies` + host（Cookie `d` / `token_v2` の読み取り）、`webRequest`（`app.slack.com` の API リクエストから xoxc を取得。ブロックはしない＝観測のみ）、`storage`（同意フラグのみ）
    - 「プライバシーへの取り組み」：**認証情報**を収集にチェック、販売なし・目的外利用なし・Limited Use 準拠を証明
 4. 公開後の URL（`https://chromewebstore.google.com/detail/<ID>`）を `lib/extension.ts` の `WEBSTORE_URL` に設定
 5. 開発ビルドと ID を揃えたい場合は、ストアの「公開鍵」を `manifest.json` の `key` に貼る
@@ -56,5 +61,5 @@ otsukare の読み込み時の自動入力も、同意済みのときだけ動�
 ## 権限
 
 - `cookies` + `host_permissions`（`*.slack.com` / `*.notion.so`）… Cookie `d` と `token_v2` の読み取り
-- `scripting` … `app.slack.com` のタブで `localConfig_v2` から xoxc を読む（開いていなければ一時タブを開いて読み、閉じます）
+- `webRequest` … `*://*.slack.com/*` の API リクエストの `token`（xoxc）を**観測のみ**で取得（ブロック・改変はしない）。`app.slack.com` を一時タブで開いて起動リクエストを飛ばし、取得したら閉じる
 - `storage` … 同意フラグ `consent` の保存のみ（トークンは保存しない）

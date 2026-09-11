@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "otsukare token filler",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "同意した後にのみ、Slack / Notion のブラウザセッションから otsukare の日報用トークン（xoxc / xoxd / token_v2）を読み取り、otsukare に自動入力します。",
-  "permissions": ["cookies", "scripting", "storage"],
+  "permissions": ["cookies", "webRequest", "storage"],
   "host_permissions": ["*://*.slack.com/*", "*://*.notion.so/*"],
   "background": { "service_worker": "background.js" },
   "action": { "default_title": "otsukare token filler：同意の確認・取り消し" },
